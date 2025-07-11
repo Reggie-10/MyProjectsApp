@@ -1,6 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { View, TextInput, Button, FlatList } from 'react-native';
+import { FlatList } from 'react-native';
 import { useRoute } from '@react-navigation/native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { TextInput, Button, HelperText, Title } from 'react-native-paper';
+
 import { loadData, saveData } from '../utils/storage';
 import TaskItem from '../components/TaskItem';
 
@@ -9,6 +12,7 @@ export default function ProjectDetailScreen() {
 
   const [project, setProject] = useState(null);
   const [taskTitle, setTaskTitle] = useState('');
+  const [showError, setShowError] = useState(false);
 
   useEffect(() => {
     const fetchProject = async () => {
@@ -29,7 +33,10 @@ export default function ProjectDetailScreen() {
   };
 
   const addTask = () => {
-    if (!taskTitle.trim()) return;
+    if (!taskTitle.trim()) {
+      setShowError(true);
+      return;
+    }
 
     const newTask = {
       id: Date.now().toString(),
@@ -44,6 +51,7 @@ export default function ProjectDetailScreen() {
 
     saveProject(updated);
     setTaskTitle('');
+    setShowError(false);
   };
 
   const toggleTask = (taskId) => {
@@ -60,14 +68,26 @@ export default function ProjectDetailScreen() {
   if (!project) return null;
 
   return (
-    <View style={{ flex: 1, padding: 16 }}>
+    <SafeAreaView style={{ flex: 1, padding: 16 }}>
+      <Title style={{ marginBottom: 16 , textAlign:'center'}}>{project.title}</Title>
       <TextInput
-        placeholder="Enter task title"
+        label="Task Title"
         value={taskTitle}
-        onChangeText={setTaskTitle}
-        style={{ borderWidth: 1, padding: 8, marginBottom: 8 }}
+        onChangeText={(text) => {
+          setTaskTitle(text);
+          if (showError) setShowError(false);
+        }}
+        error={showError}
+        mode="outlined"
+        style={{ marginBottom: 4 }}
       />
-      <Button title="Add Task" onPress={addTask} />
+      <HelperText type="error" visible={showError}>
+        Task title is required
+      </HelperText>
+
+      <Button mode="contained" onPress={addTask} style={{ marginBottom: 16 }}>
+        Add Task
+      </Button>
 
       <FlatList
         data={project.tasks}
@@ -76,6 +96,6 @@ export default function ProjectDetailScreen() {
           <TaskItem task={item} onToggle={() => toggleTask(item.id)} />
         )}
       />
-    </View>
+    </SafeAreaView>
   );
 }
