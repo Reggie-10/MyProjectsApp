@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { FlatList } from 'react-native';
+import React, { useEffect, useState, useCallback } from 'react';
+import { FlatList, Alert } from 'react-native';
 import { useNavigation, useIsFocused } from '@react-navigation/native';
 import { TextInput, Button, HelperText } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -15,6 +15,7 @@ export default function ProjectsScreen() {
   const [projectTitle, setProjectTitle] = useState('');
   const [showError, setShowError] = useState(false);
 
+  // Load projects from storage
   useEffect(() => {
     const fetchProjects = async () => {
       const stored = await loadData('projects');
@@ -26,26 +27,58 @@ export default function ProjectsScreen() {
     }
   }, [isFocused]);
 
-  useEffect(() => {
-    saveData('projects', projects);
-  }, [projects]);
+  // Save updated projects to storage whenever changed
+  const updateProjects = (newProjects) => {
+    setProjects(newProjects);
+    saveData('projects', newProjects);
+  };
 
-  const addProject = () => {
-    if (!projectTitle.trim()) {
+  // Add new project with duplicate check
+  const addProject = useCallback(() => {
+    const trimmedTitle = projectTitle.trim();
+    if (!trimmedTitle) {
       setShowError(true);
+      return;
+    }
+
+    const alreadyExists = projects.some(
+      (p) => p.title.trim().toLowerCase() === trimmedTitle.toLowerCase()
+    );
+
+    if (alreadyExists) {
+      Alert.alert('Duplicate Project', 'A project with this title already exists.');
       return;
     }
 
     const newProject = {
       id: Date.now().toString(),
-      title: projectTitle.trim(),
+      title: trimmedTitle,
       tasks: [],
     };
 
-    setProjects(prev => [...prev, newProject]);
+    updateProjects([...projects, newProject].sort((a, b) => b.id - a.id));
     setProjectTitle('');
     setShowError(false);
-  };
+  }, [projectTitle, projects]);
+
+  // Delete project with confirmation
+  const deleteProject = useCallback((projectId) => {
+    Alert.alert(
+      'Delete Project',
+      'Are you sure you want to delete this project?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: () => {
+            const updated = projects.filter(p => p.id !== projectId);
+            updateProjects(updated);
+          },
+        },
+      ]
+    );
+  }, [projects]);
 
   return (
     <SafeAreaView style={{ flex: 1, padding: 16 }}>
@@ -75,6 +108,7 @@ export default function ProjectsScreen() {
           <ProjectCard
             project={item}
             onPress={() => navigation.navigate('ProjectDetails', { projectId: item.id })}
+            onDelete={() => deleteProject(item.id)}
           />
         )}
       />
