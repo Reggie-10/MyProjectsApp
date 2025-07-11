@@ -35,3 +35,6 @@ yarn-error.*
 
 # typescript
 *.tsbuildinfo
+
+# JetBrains IDE config folder
+.idea/
